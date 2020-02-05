@@ -49,10 +49,16 @@ public class RNDatePickerDialogFragment extends DialogFragment {
     instance.updateDate(date.year(), date.month(), date.day());
   }
 
-  static DatePickerDialog createDialog(
+  static @NonNull
+  DatePickerDialog getDialog(
           Bundle args,
           Context activityContext,
           @Nullable OnDateSetListener onDateSetListener) {
+
+    final RNDate date = new RNDate(args);
+    final int year = date.year();
+    final int month = date.month();
+    final int day = date.day();
 
     RNDatePickerDisplay display = RNDatePickerDisplay.DEFAULT;
 
@@ -60,44 +66,85 @@ public class RNDatePickerDialogFragment extends DialogFragment {
       display = RNDatePickerDisplay.valueOf(args.getString(RNConstants.ARG_DISPLAY).toUpperCase(Locale.US));
     }
 
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      switch (display) {
+        case CALENDAR:
+        case SPINNER:
+          String resourceName = display == RNDatePickerDisplay.CALENDAR
+                  ? "CalendarDatePickerDialog"
+                  : "SpinnerDatePickerDialog";
+          return new RNDismissableDatePickerDialog(
+                  activityContext,
+                  activityContext.getResources().getIdentifier(
+                          resourceName,
+                          "style",
+                          activityContext.getPackageName()),
+                  onDateSetListener,
+                  year,
+                  month,
+                  day);
+        default:
+          return new RNDismissableDatePickerDialog(
+                  activityContext,
+                  onDateSetListener,
+                  year,
+                  month,
+                  day
+          );
+      }
+    } else {
+      DatePickerDialog dialog = new RNDismissableDatePickerDialog(activityContext, onDateSetListener, year, month, day);
+      switch (display) {
+        case CALENDAR:
+          dialog.getDatePicker().setCalendarViewShown(true);
+          dialog.getDatePicker().setSpinnersShown(false);
+          break;
+        case SPINNER:
+          dialog.getDatePicker().setCalendarViewShown(false);
+          break;
+      }
+      return dialog;
+    }
+  }
+
+  static DatePickerDialog createDialog(
+          Bundle args,
+          Context activityContext,
+          @Nullable OnDateSetListener onDateSetListener) {
+
+    final Calendar c = Calendar.getInstance();
+
     DatePickerDialog dialog = getDialog(args, activityContext, onDateSetListener);
-    final DatePicker datePicker = new RNDismissableDatePickerDialog(
-            activityContext,
-            display,
-            onDateSetListener,
-            new RNDate(args)
-    );
 
-    if (args != null) {
-      if (args.containsKey(RNConstants.ARG_NEUTRAL_BUTTON_LABEL))
-        dialog.setButton(DialogInterface.BUTTON_NEUTRAL, args.getString(RNConstants.ARG_NEUTRAL_BUTTON_LABEL), mOnNeutralButtonActionListener);
+    if (args != null && args.containsKey(RNConstants.ARG_NEUTRAL_BUTTON_LABEL)) {
+      dialog.setButton(DialogInterface.BUTTON_NEUTRAL, args.getString(RNConstants.ARG_NEUTRAL_BUTTON_LABEL), mOnNeutralButtonActionListener);
+    }
 
-      if (args.containsKey(RNConstants.ARG_MINDATE)) {
-        // Set minDate to the beginning of the day. We need this because of clowniness in datepicker
-        // that causes it to throw an exception if minDate is greater than the internal timestamp
-        // that it generates from the y/m/d passed in the constructor.
-        final Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(args.getLong(RNConstants.ARG_MINDATE));
-        c.set(Calendar.HOUR_OF_DAY, 0);
-        c.set(Calendar.MINUTE, 0);
-        c.set(Calendar.SECOND, 0);
-        c.set(Calendar.MILLISECOND, 0);
-        datePicker.setMinDate(c.getTimeInMillis());
-      } else {
-        // This is to work around a bug in DatePickerDialog where it doesn't display a title showing
-        // the date under certain conditions.
-        datePicker.setMinDate(RNConstants.DEFAULT_MIN_DATE);
-      }
-      if (args.containsKey(RNConstants.ARG_MAXDATE)) {
-        // Set maxDate to the end of the day, same reason as for minDate.
-        final Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(args.getLong(RNConstants.ARG_MAXDATE));
-        c.set(Calendar.HOUR_OF_DAY, 23);
-        c.set(Calendar.MINUTE, 59);
-        c.set(Calendar.SECOND, 59);
-        c.set(Calendar.MILLISECOND, 999);
-        datePicker.setMaxDate(c.getTimeInMillis());
-      }
+    final DatePicker datePicker = dialog.getDatePicker();
+
+    if (args != null && args.containsKey(RNConstants.ARG_MINDATE)) {
+      // Set minDate to the beginning of the day. We need this because of clowniness in datepicker
+      // that causes it to throw an exception if minDate is greater than the internal timestamp
+      // that it generates from the y/m/d passed in the constructor.
+      c.setTimeInMillis(args.getLong(RNConstants.ARG_MINDATE));
+      c.set(Calendar.HOUR_OF_DAY, 0);
+      c.set(Calendar.MINUTE, 0);
+      c.set(Calendar.SECOND, 0);
+      c.set(Calendar.MILLISECOND, 0);
+      datePicker.setMinDate(c.getTimeInMillis());
+    } else {
+      // This is to work around a bug in DatePickerDialog where it doesn't display a title showing
+      // the date under certain conditions.
+      datePicker.setMinDate(RNConstants.DEFAULT_MIN_DATE);
+    }
+    if (args != null && args.containsKey(RNConstants.ARG_MAXDATE)) {
+      // Set maxDate to the end of the day, same reason as for minDate.
+      c.setTimeInMillis(args.getLong(RNConstants.ARG_MAXDATE));
+      c.set(Calendar.HOUR_OF_DAY, 23);
+      c.set(Calendar.MINUTE, 59);
+      c.set(Calendar.SECOND, 59);
+      c.set(Calendar.MILLISECOND, 999);
+      datePicker.setMaxDate(c.getTimeInMillis());
     }
 
     return dialog;

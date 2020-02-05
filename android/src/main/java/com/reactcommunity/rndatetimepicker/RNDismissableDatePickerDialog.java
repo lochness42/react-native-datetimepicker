@@ -31,58 +31,6 @@ import static com.reactcommunity.rndatetimepicker.ReflectionHelper.findField;
  * </p>
  */
 public class RNDismissableDatePickerDialog extends DatePickerDialog {
-  boolean isNougat = Build.VERSION.SDK_INT == Build.VERSION_CODES.N;
-  boolean isLollipopOrNewer = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP;
-
-  public RNDismissableDatePickerDialog(Context context, RNDatePickerDisplay display, @Nullable DatePickerDialog.OnDateSetListener onDateSetListener, RNDate date) {
-    if(this.isLollipopOrNewer) {
-      String resourceName = display == RNDatePickerDisplay.CALENDAR
-              ? "CalendarDatePickerDialog"
-              : "SpinnerDatePickerDialog";
-      switch (display) {
-        case CALENDAR:
-        case SPINNER:
-          super(
-                  context,
-                  context.getResources().getIdentifier(
-                          resourceName,
-                          "style",
-                          context.getPackageName()
-                  ),
-                  onDateSetListener,
-                  date.year(),
-                  date.month(),
-                  date.day()
-          );
-        case DEFAULT:
-        default:
-          super(
-                  context,
-                  onDateSetListener,
-                  date.year(),
-                  date.month(),
-                  date.day()
-          );
-      }
-    } else {
-      super(
-              context,
-              onDateSetListener,
-              date.year(),
-              date.month(),
-              date.day()
-      );
-      switch (display) {
-        case CALENDAR:
-          this.getDatePicker().setCalendarViewShown(true);
-          this.getDatePicker().setSpinnersShown(false);
-          break;
-        case SPINNER:
-          this.getDatePicker().setCalendarViewShown(false);
-          break;
-      }
-    }
-  }
 
   public RNDismissableDatePickerDialog(
       Context context,
@@ -105,21 +53,17 @@ public class RNDismissableDatePickerDialog extends DatePickerDialog {
     fixSpinner(context, year, monthOfYear, dayOfMonth);
   }
 
-  public void addNeutralActionButton(String label, OnClickListener onClickListener) {
-    this.setButton(DialogInterface.BUTTON_NETURAL, label, onClickListener)
-  }
-
   @Override
   protected void onStop() {
     // do *not* call super.onStop() on KitKat on lower, as that would erroneously call the
     // OnDateSetListener when the dialog is dismissed, or call it twice when "OK" is pressed.
-    if (this.isLollipopOrNewer) {
+    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {
       super.onStop();
     }
   }
 
   private void fixSpinner(Context context, int year, int month, int dayOfMonth) {
-    if (this.isNougat) {
+    if (Build.VERSION.SDK_INT == Build.VERSION_CODES.N) {
       try {
         // Get the theme's android:datePickerMode
         final int MODE_SPINNER = 2;
